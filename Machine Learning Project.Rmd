@@ -1,0 +1,67 @@
+---
+title: "Machine Learning Project"
+author: "Camden Schulte"
+date: "5/12/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+First, I read in the data.
+
+```{r, results='hide'}
+URL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+location <- "/Users/gregschulte/Desktop/datasciencecoursera/Class 8: Practical Machine Learning/training.csv"
+download.file(url = URL,destfile = location,method = "curl")
+URL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+location <- "/Users/gregschulte/Desktop/datasciencecoursera/Class 8: Practical Machine Learning/testing.csv"
+download.file(url = URL,destfile = location,method = "curl")
+training <- read.table("training.csv",header=TRUE,sep=",",na.strings = "NA")
+testing <- read.table("testing.csv",header=TRUE,sep=",")
+```
+
+We need to clean up the data.  The variable I want to predict, classe, is a character variable.  It needs to be a factor variable.  I also noticed that a number of columns are NA for essentially all observations.  I will get rid of those as well below:
+
+```{r, results = 'hide'}
+training$classe <- factor(training$classe)
+training <- training[ , colSums(is.na(testing)) == 0]
+testing <- testing[ , colSums(is.na(testing)) == 0]
+```
+
+Now I get rid of columns that won't be useful predictors...they deal with identification and time.  This will leave me with 52 predictors for the classe:
+
+```{r, results='hide'}
+training <- training[,-c(1:7)]
+testing <- testing[,-c(1:7)]
+```
+
+Let's start by fitting a classification tree:
+
+```{r, results='hide'}
+library("caret")
+library("ggplot2")
+library("tidyverse")
+
+set.seed(123)
+modelfit <- train(classe~.,data=training,trControl = trainControl(method="cv",number=10),method="rpart")
+```
+
+Using K-fold cross validation with k=10, the out of sample is around 50%.  I want a higher accuracy, so let's try a more accurate and complex model type.  Let's look at random forest:
+
+```{r}
+set.seed(123)
+modelfit2 <- train(classe~.,data=training,method="rf")
+```
+
+The random forest is a much better predictor.  It has an OOB error rate of only 0.4%
+
+Let's use this to predict on the testing set.  Here are the final predictions:
+
+```{r}
+finalpredictions <- predict(modelfit2,testing[,-53])
+finalpredictions
+```
+
